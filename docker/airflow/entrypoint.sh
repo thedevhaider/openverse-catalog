@@ -34,6 +34,8 @@ function header() {
 if [ "$1" == help ] || [ "$1" == --help ]; then help_text && exit 0; fi
 sleep 0.1;  # The $COLUMNS variable takes a moment to populate
 
+export PYTHONPATH=${AIRFLOW__CORE__DAGS_FOLDER}
+
 # Reformat Airflow connections that use https
 header "MODIFYING ENVIRONMENT"
 # Loop through environment variables, relying on naming conventions.
@@ -64,6 +66,10 @@ python /opt/airflow/wait_for_db.py
 # Upgrade the database -- command is idempotent.
 header "MIGRATING DATABASE"
 airflow db upgrade
+if [[ $IS_PROD == "true" ]]; then
+  header "STARTING DAG SYNC SIDECAR"
+  python /opt/airflow/dag-sync.py &> /var/log/dag-sync/sync.log &
+fi
 if [[ "$1" == "init" ]]; then
   header "CREATING ADMIN USER"
   airflow users create -r Admin -u airflow -f Air -l Flow -p airflow --email airflow@example.org

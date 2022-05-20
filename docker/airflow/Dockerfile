@@ -34,20 +34,22 @@ RUN apt-get update && apt-get -yqq upgrade && apt-get -yqq install \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd -m -d ${AIRFLOW_HOME} airflow && \
     mkdir -p ${OUTPUT_DIR} && \
-    chown airflow:airflow ${OUTPUT_DIR}
+    chown airflow:airflow ${OUTPUT_DIR} && \
+    mkdir -p /var/log/dag-sync/ && \
+    chown airflow:airflow /var/log/dag-sync
 USER airflow
 
 ARG AIRFLOW_VERSION=2.3.0
 WORKDIR  ${AIRFLOW_HOME}
 # Always add the prod req because the dev reqs depend on it for deduplication
 COPY ${REQUIREMENTS_FILE} requirements_prod.txt ${AIRFLOW_HOME}/
-COPY docker/airflow/wait_for_db.py /opt/airflow/
 
 # https://airflow.apache.org/docs/apache-airflow/stable/installation/installing-from-pypi.html#constraints-files
 ARG CONSTRAINTS_FILE="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-3.9.txt"
 
 RUN pip install --user -r ${REQUIREMENTS_FILE} -c ${CONSTRAINTS_FILE}
 
+COPY docker/airflow/wait_for_db.py docker/airflow/dag-sync.py /opt/airflow/
 COPY docker/airflow/entrypoint.sh /opt/airflow/entrypoint.sh
 
 ENTRYPOINT ["/opt/airflow/entrypoint.sh"]
